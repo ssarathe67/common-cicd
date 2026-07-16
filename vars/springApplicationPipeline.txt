@@ -1,0 +1,11 @@
+Runs a standard Spring application CI/CD pipeline.
+
+Example:
+
+@Library('common-cicd') _
+
+springApplicationPipeline(
+  appName: 'orders-api',
+  deployPort: 8080
+)
+
