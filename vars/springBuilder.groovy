@@ -2,10 +2,10 @@ def build(config) {
     config.steps.echo "Building ${config.appName}"
 
     if (!config.skipTests) {
-        config.steps.sh config.testCommand
+        config.run(config.testCommand, config.windowsTestCommand)
     }
 
-    config.steps.sh config.buildCommand
+    config.run(config.buildCommand, config.windowsBuildCommand)
 
     def containerFile = config.containerFile
     if (!containerFile) {
@@ -14,11 +14,14 @@ def build(config) {
         config.steps.writeFile file: containerFile, text: generatedContainerFile(config)
     }
 
-    config.steps.sh "podman build -f ${config.shellQuote(containerFile)} -t ${config.shellQuote(config.imageRef)} ."
+    config.run(
+        "podman build -f ${config.shellQuote(containerFile)} -t ${config.shellQuote(config.imageRef)} .",
+        "podman build -f ${config.windowsQuote(containerFile)} -t ${config.windowsQuote(config.imageRef)} ."
+    )
 }
 
 private void prepareGeneratedContainerJar(config) {
-    config.steps.sh """mkdir -p .jenkins
+    config.run("""mkdir -p .jenkins
 jar_file=""
 for dir in target build/libs; do
   if [ -d "\$dir" ]; then
@@ -36,7 +39,25 @@ if [ -z "\$jar_file" ]; then
   exit 1
 fi
 cp "\$jar_file" .jenkins/app.jar
+""", """if not exist .jenkins mkdir .jenkins
+set "JAR_FILE="
+if exist target (
+  for %%F in (target\\*.jar) do (
+    echo %%~nxF | findstr /I /R "plain\\.jar original-.*\\.jar" >nul || if not defined JAR_FILE set "JAR_FILE=%%F"
+  )
+)
+if not defined JAR_FILE if exist build\\libs (
+  for %%F in (build\\libs\\*.jar) do (
+    echo %%~nxF | findstr /I /R "plain\\.jar original-.*\\.jar" >nul || if not defined JAR_FILE set "JAR_FILE=%%F"
+  )
+)
+if not defined JAR_FILE (
+  echo No jar artifact found for generated container image
+  exit /b 1
+)
+copy /Y "%JAR_FILE%" ".jenkins\\app.jar"
 """
+    )
 }
 
 private String generatedContainerFile(config) {

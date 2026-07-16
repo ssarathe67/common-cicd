@@ -32,6 +32,9 @@ The pipeline has three stages:
 - `Build`: builds the Spring application and container image.
 - `Deploy`: runs the application with Podman and prints the URL to hit.
 
+The library supports Linux and Windows Jenkins agents. On Windows it uses Jenkins `bat`
+steps instead of `sh`.
+
 ## Expected Application Repository
 
 The application repository should include one of:
